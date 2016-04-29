@@ -506,6 +506,8 @@ def readRow(lineOfData):
     month = lineOfData[15:17]
     
     yearInt = int(year)
+    oldestYear = int(oldestYear)  #gotta luv duck typing!
+    youngestYear = int(youngestYear)
     if (yearInt >= oldestYear) and (yearInt <= youngestYear):
         #Either get ahold of stationMonth, or create a new one
         if stationMonthCode in measurements.fileMeasurements:
@@ -623,13 +625,13 @@ def getDailyData(months = [], days = [], stations = []):
                                     'year': stationMonth.year,
                                     'month': stationMonth.month,
                                     'day': day,
-                                    'avgTmax': avgTmax,
-                                    'avgTmin': avgTmin,
-                                    'avgSnwd': avgSnwd,
-                                    'avgAcmm': avgAcmm,
-                                    'avgAcss': avgAcss,
-                                    'sumPrcp': sumPrcp,
-                                    'sumSnow': sumSnow
+                                    'tmax': avgTmax,
+                                    'tmin': avgTmin,
+                                    'snwd': avgSnwd,
+                                    'acmm': avgAcmm,
+                                    'acss': avgAcss,
+                                    'prcp': sumPrcp,
+                                    'snow': sumSnow
                                     }
                         dataRows.append(dataRow)
                     except Exception as e:
