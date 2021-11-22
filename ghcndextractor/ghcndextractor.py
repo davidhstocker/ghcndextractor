@@ -24,6 +24,7 @@ csvSeperator = ","
 oldestYear = 1
 youngestYear = 3000
 ghcnFolder = None
+daysPerMonth = 31
 
 class undefinedGHCNDatasetLocation(ValueError):
     pass
@@ -69,6 +70,7 @@ class DailyMeasurements(object):
         self.preferManual = preferManual  
         self.TMAX = []  #max daily temp
         self.TMIN = []  #min daily temp
+        self.TOBS = []  #obs daily temp
         self.PRCP = []  #Precipitation (tenths of mm)
         self.SNOW = []  #Snowfall (mm)
         self.SNWD = []  #Snow depth (mm)
@@ -114,6 +116,16 @@ class DailyMeasurements(object):
                         self.TMIN = []
                 except Exception:
                     self.TMIN = []
+        elif measureType == "TOBS":
+            if value != u"-9999":
+                try:
+                    tempObs = self.convertToDecimal(value, -1) #.dly fiels is in tenths of a degree
+                    if tempObs is not None:
+                        self.TOBS = [tempObs, mFlag, qFlag, sFlag]
+                    else:
+                        self.TOBS = []
+                except Exception:
+                    self.TOBS = []
         elif measureType == "PRCP":
             if value != u"-9999":
                 try:
@@ -217,7 +229,7 @@ class StationMonth(object):
         self.month = month
         self.days = {}
         
-        for x in range(1, 31):
+        for x in range(1, daysPerMonth + 1):
             day = DailyMeasurements()
             xKey = str(x)
             self.days[xKey] = day      
@@ -234,6 +246,11 @@ class StationMonth(object):
         tmin = ''
         try:
             tmin = str(dailyMeasurement.TMIN[0])
+        except: pass
+
+        tobs = ''
+        try:
+            tobs = str(dailyMeasurement.TOBS[0])
         except: pass
 
         prcp = ''
@@ -261,7 +278,7 @@ class StationMonth(object):
             acmm = str(dailyMeasurement.ACMM[0])
         except: pass
 
-        return tmax, tmin, prcp, snow, snwd, acmm, acss
+        return tmax, tmin, tobs, prcp, snow, snwd, acmm, acss
 
 
             
@@ -275,16 +292,19 @@ class StationMonth(object):
     def getMonthlyAverages(self):
         sumTmax = decimal.Decimal('0.0')
         sumTmin = decimal.Decimal('0.0')
+        sumTobs = decimal.Decimal('0.0')
         sumSnwd = decimal.Decimal('0.0')
         sumAcmm = decimal.Decimal('0.0')
         sumAcss= decimal.Decimal('0.0')
         countTmax = 0
         countTmin = 0
+        countTobs = 0
         countSnwd = 0
         countAcmm = 0
         countAcss = 0
         hasTmax = False
         hasTmin = False
+        hasTobs = False
         hasSnwd = False
         hasAcmm = False
         hasAcss = False
@@ -300,6 +320,11 @@ class StationMonth(object):
                 countTmin = countTmin + 1
                 sumTmin = sumTmin + day.TMIN[0]
                 hasTmin = True  
+
+            if len(day.TOBS) > 0:
+                countTobs = countTobs + 1
+                sumTobs = sumTobs + day.TOBS[0]
+                hasTobs = True  
                 
             if len(day.SNWD) > 0:
                 countSnwd = countSnwd + 1
@@ -325,7 +350,12 @@ class StationMonth(object):
             avgTmin = sumTmin/decimal.Decimal(countTmin)
         else:
             avgTmin = None  
-                     
+        
+        if hasTobs is True:
+            avgTobs = sumTobs/decimal.Decimal(countTobs)
+        else:
+            avgTobs = None  
+        
         if hasSnwd is True:
             avgSnwd = sumSnwd/decimal.Decimal(countSnwd)
         else:
@@ -341,7 +371,7 @@ class StationMonth(object):
         else:
             avgAcss = None
             
-        return avgTmax, avgTmin, avgSnwd, avgAcmm, avgAcss
+        return avgTmax, avgTmin, avgTobs, avgSnwd, avgAcmm, avgAcss
     
     
     def getMonthlySums(self):
@@ -381,7 +411,7 @@ class Measurments(object):
             try:
                 stationMonth = self.fileMeasurements[stationMonthCode]
                 if ((not months) or (stationMonth.month in months)) and ((not stations) or (stationMonth.stationID in stations)):
-                    avgTmax, avgTmin, avgSnwd, avgAcmm, avgAcss = stationMonth.getMonthlyAverages()
+                    avgTmax, avgTmin, avgTobs, avgSnwd, avgAcmm, avgAcss = stationMonth.getMonthlyAverages()
                     sumPrcp, sumSnow = stationMonth.getMonthlySums()
                     
                     dataRow = { 'stationID': stationMonth.stationID,
@@ -389,6 +419,7 @@ class Measurments(object):
                                 'month': stationMonth.month,
                                 'avgTmax': avgTmax,
                                 'avgTmin': avgTmin,
+                                'avgTobs': avgTobs,
                                 'avgSnwd': avgSnwd,
                                 'avgAcmm': avgAcmm,
                                 'avgAcss': avgAcss,
@@ -411,7 +442,7 @@ class Measurments(object):
             try:
                 stationMonth = self.fileMeasurements[stationMonthCode]
                 if ((not months) or (stationMonth.month in months)) and ((not stations) or (stationMonth.stationID in stations)):
-                    avgTmax, avgTmin, avgSnwd, avgAcmm, avgAcss = stationMonth.getMonthlyAverages()
+                    avgTmax, avgTmin, avgTobs, avgSnwd, avgAcmm, avgAcss = stationMonth.getMonthlyAverages()
                     sumPrcp, sumSnow = stationMonth.getMonthlySums()
                     
                     csvString = "%s"  %(stationMonth.stationID)
@@ -419,6 +450,7 @@ class Measurments(object):
                     csvString = "%s%s %s"  %(csvString, csvSeperator, stationMonth.month)
                     csvString = "%s%s %s"  %(csvString, csvSeperator, avgTmax)
                     csvString = "%s%s %s"  %(csvString, csvSeperator, avgTmin)
+                    csvString = "%s%s %s"  %(csvString, csvSeperator, avgTobs)
                     csvString = "%s%s %s"  %(csvString, csvSeperator, sumPrcp)
                     csvString = "%s%s %s"  %(csvString, csvSeperator, sumSnow)
                     csvString = "%s%s %s"  %(csvString, csvSeperator, avgSnwd)
@@ -517,7 +549,7 @@ def readRow(lineOfData):
         
         #the actual data from the 
         element = lineOfData[17:21]
-        for x in range(0, 30):
+        for x in range(0, daysPerMonth):
             dayOM = x + 1
             offsetStart = (x*8)+21
             offsetEnd = offsetStart + 8
@@ -596,6 +628,7 @@ def getMonthlyDataCSV(months = [], stations = []):
     csvString = "%s%s %s"  %(csvString, csvSeperator, "Month")
     csvString = "%s%s %s"  %(csvString, csvSeperator, "TempMax")
     csvString = "%s%s %s"  %(csvString, csvSeperator, "TempMin")
+    csvString = "%s%s %s"  %(csvString, csvSeperator, "TempObs")
     csvString = "%s%s %s"  %(csvString, csvSeperator, "Precipitation")
     csvString = "%s%s %s"  %(csvString, csvSeperator, "Snowfall")
     csvString = "%s%s %s"  %(csvString, csvSeperator, "SnowDepth")
@@ -616,17 +649,18 @@ def getDailyData(months = [], days = [], stations = []):
             stationMonth = measurements.fileMeasurements[stationMonthCode]
             if ((not months) or (stationMonth.month in months)) and ((not stations) or (stationMonth.stationID in stations)):
                 if (not days):
-                    for x in range(1, 31):
+                    for x in range(1, daysPerMonth + 1):
                         days.append(str(x))
                 for day in days:
                     try:
-                        avgTmax, avgTmin, sumPrcp, sumSnow, avgSnwd, avgAcmm, avgAcss = stationMonth.getDaily(day)
+                        avgTmax, avgTmin, avgTobs, sumPrcp, sumSnow, avgSnwd, avgAcmm, avgAcss = stationMonth.getDaily(day)
                         dataRow = { 'stationID': stationMonth.stationID,
                                     'year': stationMonth.year,
                                     'month': stationMonth.month,
                                     'day': day,
                                     'tmax': avgTmax,
                                     'tmin': avgTmin,
+                                    'tobs': avgTobs,
                                     'snwd': avgSnwd,
                                     'acmm': avgAcmm,
                                     'acss': avgAcss,
@@ -651,6 +685,7 @@ def getDailyDataCSV(months = [], days = [], stations = []):
     csvString = "%s%s %s"  %(csvString, csvSeperator, "Day")
     csvString = "%s%s %s"  %(csvString, csvSeperator, "TempMax")
     csvString = "%s%s %s"  %(csvString, csvSeperator, "TempMin")
+    csvString = "%s%s %s"  %(csvString, csvSeperator, "TempObs")
     csvString = "%s%s %s"  %(csvString, csvSeperator, "Precipitation")
     csvString = "%s%s %s"  %(csvString, csvSeperator, "Snowfall")
     csvString = "%s%s %s"  %(csvString, csvSeperator, "SnowDepth")
@@ -663,17 +698,18 @@ def getDailyDataCSV(months = [], days = [], stations = []):
             stationMonth = measurements.fileMeasurements[stationMonthCode]
             if ((not months) or (stationMonth.month in months)) and ((not stations) or (stationMonth.stationID in stations)):
                 if (not days):
-                    for x in range(1, 31):
+                    for x in range(1, daysPerMonth + 1):
                         days.append(str(x))
                 for day in days:
                     try:
-                        avgTmax, avgTmin, sumPrcp, sumSnow, avgSnwd, avgAcmm, avgAcss = stationMonth.getDaily(day)
+                        avgTmax, avgTmin, avgTobs, sumPrcp, sumSnow, avgSnwd, avgAcmm, avgAcss = stationMonth.getDaily(day)
                         csvString = "%s"  %(stationMonth.stationID)
                         csvString = "%s%s %s"  %(csvString, csvSeperator, stationMonth.year)
                         csvString = "%s%s %s"  %(csvString, csvSeperator, stationMonth.month)
                         csvString = "%s%s %s"  %(csvString, csvSeperator, day)
                         csvString = "%s%s %s"  %(csvString, csvSeperator, avgTmax)
                         csvString = "%s%s %s"  %(csvString, csvSeperator, avgTmin)
+                        csvString = "%s%s %s"  %(csvString, csvSeperator, avgTobs)
                         csvString = "%s%s %s"  %(csvString, csvSeperator, sumPrcp)
                         csvString = "%s%s %s"  %(csvString, csvSeperator, sumSnow)
                         csvString = "%s%s %s"  %(csvString, csvSeperator, avgSnwd)
