@@ -680,8 +680,8 @@ def getDailyDataCSV(months = [], days = [], stations = []):
                         csvString = "%s%s %s"  %(csvString, csvSeperator, avgAcmm)
                         csvString = "%s%s %s"  %(csvString, csvSeperator, avgAcss)
                     except Exception as e:
-                        pass
-                csvRows.append(csvString)
+                        continue
+                    csvRows.append(csvString)
         except Exception as e:
             raise e 
     return csvRows
